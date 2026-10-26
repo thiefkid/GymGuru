@@ -117,32 +117,27 @@ describe('logging a workout', () => {
 });
 
 describe('extending the block', () => {
-  it('repeats the 4-week cycle', () => {
-    const names = (day: 'd1' | 'd3', week: number) => program(day, week).map((e) => e.name);
-    expect(names('d1', 5)).toEqual(names('d1', 1));
-    expect(names('d1', 6)).toEqual(names('d1', 2));
-    expect(names('d1', 7).includes('Incline Press Machine')).toBe(true);
-    expect(names('d3', 9)).toEqual(names('d3', 1));
+  it('repeats week 4 in added weeks', () => {
+    const names = (day: 'd1' | 'd3' | 'd4', week: number) => program(day, week).map((e) => e.name);
+    for (const day of ['d1', 'd3', 'd4'] as const) {
+      expect(names(day, 5)).toEqual(names(day, 4));
+      expect(names(day, 9)).toEqual(names(day, 4));
+    }
+    expect(names('d1', 5)).toContain('Incline Press Machine');
+    expect(names('d1', 5)).not.toContain('Pause DB Flat Bench');
   });
 
-  it('compares a variant with the last time it was done', () => {
-    let s = initialState();
-    s = reducer(s, { type: 'addWeek' });
-    s = reducer(s, { type: 'addWeek' });
-    // Week 4: Smith Bulgarian split squat at 40 kg. Week 5: DB again, at 12 kg.
-    for (const [week, weight] of [[4, '40'], [5, '12']] as const) {
-      s = reducer(s, { type: 'selectWeek', week });
-      s = reducer(s, { type: 'selectDay', day: 'd3' });
-      s = reducer(s, { type: 'start', date: '2026-11-01' });
-      s = reducer(s, { type: 'setWeight', exerciseId: 'bss', set: 0, value: weight });
-      s = reducer(s, { type: 'toggleSet', exerciseId: 'bss', set: 0, now: NOW });
-    }
-    // Week 5's DB version looks back to week 1's DB weight from the sheet, not week 4's Smith.
-    expect(lastWeight(s.logs, 5, 'd3', 'bss')).toEqual({ weight: 10, week: 1, source: 'sheet', variant: 'DB' });
-    // Week 6 is Smith again: week 4, not week 5's DB.
-    expect(lastWeight(s.logs, 6, 'd3', 'bss')).toEqual({ weight: 40, week: 4, source: 'app' });
-    // Without a matching variant it falls back to the latest week.
-    expect(lastWeight(s.logs, 2, 'd3', 'bss')).toMatchObject({ weight: 10, week: 1 });
+  it('fills an added week with the previous week’s weights', () => {
+    let s = reducer(initialState(), { type: 'addWeek' });
+    s = reducer(s, { type: 'selectWeek', week: 4 });
+    s = reducer(s, { type: 'selectDay', day: 'd3' });
+    s = reducer(s, { type: 'start', date: '2026-11-01' });
+    s = reducer(s, { type: 'setWeight', exerciseId: 'bss', set: 0, value: '40' });
+    s = reducer(s, { type: 'toggleSet', exerciseId: 'bss', set: 0, now: NOW });
+    expect(lastWeight(s.logs, 5, 'd3', 'bss')).toEqual({ weight: 40, week: 4, source: 'app' });
+    s = reducer(s, { type: 'selectWeek', week: 5 });
+    s = reducer(s, { type: 'start', date: '2026-11-08' });
+    expect(currentSession(s).exercises.bss.sets.map((x) => x.weight)).toEqual(['40', '40', '40']);
   });
 
   it('moves on past the last week only once a week is added', () => {

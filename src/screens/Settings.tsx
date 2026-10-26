@@ -3,7 +3,7 @@ import scriptSource from '../../apps-script/Code.gs?raw';
 import { Icon } from '../components/Icon';
 import { toCsv } from '../logic';
 import { connect, fetchFromSheet, isScriptUrl } from '../sync';
-import { CYCLE_WEEKS, blockName } from '../program';
+import { SHEET_WEEKS, blockName } from '../program';
 import { canRemoveWeek, initialState, isState, today, type Action, type State } from '../store';
 
 function download(name: string, type: string, text: string) {
@@ -228,8 +228,7 @@ export function Settings({ state, dispatch }: { state: State; dispatch: Dispatch
         <section className="card stack-sm">
           <h2 className="strong">Program length</h2>
           <p className="muted small">
-            Block {blockName(state.weeks)}: {state.weeks} weeks. Added weeks repeat your sheet’s 4-week cycle, so week 5 is like week 1, week 6 like week 2,
-            and so on, with your latest weights as the target.
+            Block {blockName(state.weeks)}: {state.weeks} weeks. Added weeks repeat week 4’s plan, with your latest weights as the target.
           </p>
           <div className="stack-sm">
             <button
@@ -241,7 +240,7 @@ export function Settings({ state, dispatch }: { state: State; dispatch: Dispatch
             >
               Add week {state.weeks + 1}
             </button>
-            {state.weeks > CYCLE_WEEKS && (
+            {state.weeks > SHEET_WEEKS && (
               <button
                 className="secondary"
                 disabled={!canRemoveWeek(state)}
@@ -253,7 +252,7 @@ export function Settings({ state, dispatch }: { state: State; dispatch: Dispatch
                 Remove week {state.weeks}
               </button>
             )}
-            {state.weeks > CYCLE_WEEKS && !canRemoveWeek(state) && (
+            {state.weeks > SHEET_WEEKS && !canRemoveWeek(state) && (
               <p className="muted tiny-text">Week {state.weeks} has workouts in it, so it can’t be removed.</p>
             )}
           </div>

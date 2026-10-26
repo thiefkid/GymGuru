@@ -1,4 +1,4 @@
-import { CYCLE_WEEKS, DAYS, SHEET_HISTORY, WEEKS, program, type DayId } from './program';
+import { DAYS, SHEET_HISTORY, SHEET_WEEKS, WEEKS, program, type DayId } from './program';
 
 export interface SetLog {
   /** Kept as typed text so a half-typed "42." survives re-renders. */
@@ -71,21 +71,13 @@ export function topWeight(logs: Logs, week: number, day: DayId, exerciseId: stri
   return null;
 }
 
-/**
- * The most recent earlier week in which this exercise has a weight, preferring the same
- * variant: week 5's DB Bulgarian split squat compares with week 1's, not week 4's Smith one.
- */
+/** The most recent earlier week of the block in which this exercise has a weight. */
 export function lastWeight(logs: Logs, week: number, day: DayId, exerciseId: string): PastWeight | null {
-  const nameIn = (w: number) => program(day, w).find((e) => e.id === exerciseId)?.name;
-  const name = nameIn(week);
-  let fallback: PastWeight | null = null;
   for (let w = week - 1; w >= 1; w--) {
     const top = topWeight(logs, w, day, exerciseId);
-    if (!top) continue;
-    if (nameIn(w) === name) return { ...top, week: w };
-    fallback ??= { ...top, week: w };
+    if (top) return { ...top, week: w };
   }
-  return fallback;
+  return null;
 }
 
 export function buildSession(logs: Logs, week: number, day: DayId, date: string): SessionLog {
@@ -150,7 +142,7 @@ function slots(weeks: number): Slot[] {
 }
 
 /** The slot after the furthest one saved, so "today" follows on from the last logged day. */
-export function nextSlot(saved: Saved, weeks: number = CYCLE_WEEKS): Slot {
+export function nextSlot(saved: Saved, weeks: number = SHEET_WEEKS): Slot {
   const all = slots(weeks);
   let furthest = -1;
   all.forEach((slot, i) => {

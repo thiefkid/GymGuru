@@ -3,7 +3,7 @@ import { ExerciseSheet } from '../components/ExerciseSheet';
 import { Icon } from '../components/Icon';
 import { TabBar } from '../components/TabBar';
 import { blockComplete, formatWeight, hasProgress, lastWeight, sessionKey } from '../logic';
-import { DAYS, blockName, cycleWeek, program, type Exercise } from '../program';
+import { DAYS, blockName, program, type Exercise } from '../program';
 import { currentKey, today, type Action, type State } from '../store';
 
 export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Action> }) {
@@ -71,7 +71,7 @@ export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Ac
               <div className="stack-2 grow">
                 <span className="strong">All {state.weeks} weeks logged</span>
                 <span className="muted tiny-text">
-                  Week {state.weeks + 1} repeats the plan for week {cycleWeek(state.weeks + 1)}, with your latest weights as the target.
+                  Week {state.weeks + 1} repeats week 4’s plan, with your latest weights as the target.
                 </span>
               </div>
               <button className="accent-btn" onClick={() => dispatch({ type: 'addWeek' })}>

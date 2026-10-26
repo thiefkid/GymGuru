@@ -11,7 +11,7 @@ import {
   type Saved,
   type SessionLog,
 } from './logic';
-import { CYCLE_WEEKS, program, type DayId } from './program';
+import { SHEET_WEEKS, program, type DayId } from './program';
 
 export type Screen = 'today' | 'session' | 'summary' | 'history' | 'settings';
 
@@ -96,19 +96,19 @@ export function initialState(): State {
     historyDay: slot.day,
     restEnd: null,
     sync: { url: '', key: randomKey(), sheetName: null, queue: [], lastSynced: null, error: null },
-    weeks: CYCLE_WEEKS,
+    weeks: SHEET_WEEKS,
   };
 }
 
 /** Fills in fields older saves don't have and makes room for every week that holds a workout. */
 export function normalize(state: State): State {
-  const weeks = Math.max(CYCLE_WEEKS, Number(state.weeks) || 0, lastUsedWeek(state.logs, state.saved));
+  const weeks = Math.max(SHEET_WEEKS, Number(state.weeks) || 0, lastUsedWeek(state.logs, state.saved));
   return weeks === state.weeks ? state : { ...state, weeks };
 }
 
 /** Whether the last week can be dropped: it was added in the app and nothing is logged in it. */
 export function canRemoveWeek(state: State): boolean {
-  return state.weeks > CYCLE_WEEKS && lastUsedWeek(state.logs, state.saved) < state.weeks;
+  return state.weeks > SHEET_WEEKS && lastUsedWeek(state.logs, state.saved) < state.weeks;
 }
 
 export function isState(value: unknown): value is State {
