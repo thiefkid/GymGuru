@@ -42,7 +42,9 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((res) => {
+        .then(async (res) => {
+          // If the host answers with an error (outage, 404), keep using the installed copy.
+          if (!res.ok) return (await caches.match('./')) || res;
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put('./', copy));
           return res;
