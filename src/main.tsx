@@ -8,6 +8,9 @@ import '@fontsource/barlow-condensed/latin-600.css';
 import '@fontsource/barlow-condensed/latin-700.css';
 import './styles.css';
 import { App } from './App';
+import { fitStandaloneViewport } from './viewport';
+
+fitStandaloneViewport();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

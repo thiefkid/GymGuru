@@ -41,7 +41,8 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      // Revalidate the page with the server so a new version shows up on the next launch.
+      fetch(request, { cache: 'no-cache' })
         .then(async (res) => {
           // If the host answers with an error (outage, 404), keep using the installed copy.
           if (!res.ok) return (await caches.match('./')) || res;
