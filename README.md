@@ -9,9 +9,14 @@ and charts your top weight per exercise week by week.
 - **Today**: pick the week (W1–W4) and day (Chest, Back, Legs, Shoulders). The plan lists
   sets × reps, target RPE, rest and what you lifted last time. It opens on the day after
   the last one you logged.
-- **Workout**: adjust weight (±2.5 kg) and reps, tick each set. Ticking starts the rest
-  countdown and copies the weight to the remaining sets. "Try +2.5 kg" bumps the sets
-  still to do. Rate the exercise's RPE.
+- **Workout**: set the weight (±2.5 kg) and reps, then press **Done · Rest** at the bottom.
+  That logs the set, copies the weight to the remaining sets and starts the rest
+  countdown, which beeps when it ends (iPhone: if the silent switch is off). On the last
+  set of a movement it moves on to the next exercise instead. The ✓ on each row does the
+  same for any set. "Try +2.5 kg" bumps the sets still to do. Rate the exercise's RPE.
+- **How to**: tap a movement (in the day's plan, or its name during a workout) for a demo
+  video, form tips and a YouTube search. Videos and their tips are in
+  `src/exerciseGuides.ts`; if a video won't play, the app offers a YouTube search instead.
 - **Finish → Save**: shows sets, volume and change versus last time, then marks the day
   logged.
 - **History**: top weight per exercise for each week of the block.

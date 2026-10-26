@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
+import { beep, primeAudio } from '../beep';
+import { ExerciseSheet } from '../components/ExerciseSheet';
 import { Icon } from '../components/Icon';
 import { WEIGHT_STEP, formatClock, formatWeight, lastWeight, sessionStats } from '../logic';
-import { DAYS, program } from '../program';
+import { DAYS, program, type Exercise } from '../program';
 import { currentSession, type Action, type State } from '../store';
 
 const RPE_OPTIONS = [6, 7, 8, 9, 10];
 
-/** Re-renders every half second while a rest is running, and buzzes when it ends. */
+/** Re-renders every half second while a rest is running, and beeps and buzzes when it ends. */
 function useRestClock(restEnd: number | null, dispatch: Dispatch<Action>) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -15,7 +17,11 @@ function useRestClock(restEnd: number | null, dispatch: Dispatch<Action>) {
       const t = Date.now();
       setNow(t);
       if (t >= restEnd) {
-        navigator.vibrate?.([200, 100, 200]);
+        // Only alert when the rest ran out just now, not when reopening the app long after.
+        if (t - restEnd < 5000) {
+          beep();
+          navigator.vibrate?.([200, 100, 200]);
+        }
         dispatch({ type: 'skipRest' });
       }
     };
@@ -50,6 +56,7 @@ export function Session({ state, dispatch }: { state: State; dispatch: Dispatch<
   useWakeLock();
   const restLeft = useRestClock(state.restEnd, dispatch);
   const chipRow = useRef<HTMLDivElement>(null);
+  const [howTo, setHowTo] = useState<Exercise | null>(null);
 
   const list = program(state.day, state.week);
   const day = DAYS.find((d) => d.id === state.day)!;
@@ -70,6 +77,23 @@ export function Session({ state, dispatch }: { state: State; dispatch: Dispatch<
 
   const id = exercise.id;
   const progress = stats.totalSets ? (stats.doneSets / stats.totalSets) * 100 : 0;
+
+  // The big button: log the next set and start the rest, or move on once the sets are done.
+  const goNext = () => dispatch(isLast ? { type: 'screen', screen: 'summary' } : { type: 'goExercise', index: index + 1 });
+  const nextSet = log.sets.findIndex((s) => !s.done);
+  const lastSetOfExercise = log.sets.filter((s) => !s.done).length === 1;
+  const main =
+    nextSet < 0
+      ? { label: isLast ? 'Finish workout' : 'Next exercise', detail: null, onClick: goNext }
+      : {
+          label: lastSetOfExercise ? (isLast ? 'Done · Finish' : 'Done · Next exercise') : `Done · Rest ${formatClock(exercise.rest)}`,
+          detail: `Set ${nextSet + 1} of ${log.sets.length} · ${log.sets[nextSet].weight || '–'} kg × ${log.sets[nextSet].reps}`,
+          onClick: () => {
+            primeAudio();
+            dispatch({ type: 'toggleSet', exerciseId: id, set: nextSet, now: Date.now() });
+            if (lastSetOfExercise) goNext();
+          },
+        };
 
   return (
     <div className="screen">
@@ -120,7 +144,15 @@ export function Session({ state, dispatch }: { state: State; dispatch: Dispatch<
             Exercise {index + 1} of {list.length}
           </p>
           <div className="row gap-sm center wrap">
-            <h2 className="display xl">{exercise.name}</h2>
+            <h2 className="display xl">
+              <button className="title-btn" onClick={() => setHowTo(exercise)}>
+                {exercise.name}
+                <span className="howto-pill">
+                  <Icon name="play" size={10} stroke={2} />
+                  How to
+                </span>
+              </button>
+            </h2>
             {exercise.optional && <span className="tag">Optional</span>}
           </div>
           <div className="row gap-sm wrap">
@@ -194,7 +226,10 @@ export function Session({ state, dispatch }: { state: State; dispatch: Dispatch<
                   className="done-btn"
                   aria-pressed={s.done}
                   aria-label={s.done ? `Undo set ${n}` : `Complete set ${n}`}
-                  onClick={() => dispatch({ type: 'toggleSet', exerciseId: id, set: i, now: Date.now() })}
+                  onClick={() => {
+                    primeAudio();
+                    dispatch({ type: 'toggleSet', exerciseId: id, set: i, now: Date.now() });
+                  }}
                 >
                   <Icon name="check" size={20} stroke={3} />
                 </button>
@@ -252,15 +287,17 @@ export function Session({ state, dispatch }: { state: State; dispatch: Dispatch<
           >
             <Icon name="back" />
           </button>
-          <button
-            className="primary grow"
-            onClick={() => dispatch(isLast ? { type: 'screen', screen: 'summary' } : { type: 'goExercise', index: index + 1 })}
-          >
-            {isLast ? 'Finish workout' : 'Next exercise'}
-            <Icon name="next" stroke={2.6} />
+          <button className={`primary grow ${main.detail ? 'stacked' : ''}`} onClick={main.onClick}>
+            {main.detail && <span className="primary-detail nums">{main.detail}</span>}
+            <span className="primary-label">
+              {main.label}
+              {!main.detail && <Icon name="next" stroke={2.6} />}
+            </span>
           </button>
         </div>
       </div>
+
+      <ExerciseSheet exercise={howTo} onClose={() => setHowTo(null)} />
     </div>
   );
 }

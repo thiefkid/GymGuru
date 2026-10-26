@@ -1,11 +1,13 @@
-import type { Dispatch } from 'react';
+import { useState, type Dispatch } from 'react';
+import { ExerciseSheet } from '../components/ExerciseSheet';
 import { Icon } from '../components/Icon';
 import { TabBar } from '../components/TabBar';
 import { formatWeight, hasProgress, lastWeight, sessionKey } from '../logic';
-import { BLOCK_NAME, DAYS, WEEKS, program } from '../program';
+import { BLOCK_NAME, DAYS, WEEKS, program, type Exercise } from '../program';
 import { currentKey, today, type Action, type State } from '../store';
 
 export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Action> }) {
+  const [howTo, setHowTo] = useState<Exercise | null>(null);
   const list = program(state.day, state.week);
   const day = DAYS.find((d) => d.id === state.day)!;
   const totalSets = list.reduce((n, e) => n + e.sets, 0);
@@ -86,26 +88,31 @@ export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Ac
               {list.length} exercises · {totalSets} sets
             </span>
           </div>
+          <p className="muted tiny-text plan-hint">
+            <Icon name="play" size={10} stroke={2} /> Tap a movement to see how it’s done.
+          </p>
           <ol className="plan">
             {list.map((e, i) => {
               const last = lastWeight(state.logs, state.week, state.day, e.id);
               return (
-                <li key={e.id} className="plan-row">
-                  <span className="plan-num">{i + 1}</span>
-                  <div className="grow stack-2">
-                    <span className="strong">
-                      {e.name}
-                      {e.optional && <span className="tag">Optional</span>}
+                <li key={e.id}>
+                  <button className="plan-row plan-btn" onClick={() => setHowTo(e)} aria-label={`${e.name}: how to do it`}>
+                    <span className="plan-num">{i + 1}</span>
+                    <span className="grow stack-2">
+                      <span className="strong">
+                        {e.name}
+                        {e.optional && <span className="tag">Optional</span>}
+                      </span>
+                      <span className="muted tiny-text">
+                        {e.sets} × {e.reps}
+                        {e.rpe ? ` · RPE ${e.rpe}` : ''} · {e.rest / 60} min rest
+                      </span>
                     </span>
-                    <span className="muted tiny-text">
-                      {e.sets} × {e.reps}
-                      {e.rpe ? ` · RPE ${e.rpe}` : ''} · {e.rest / 60} min rest
+                    <span className="plan-last">
+                      <span className="display sm">{last ? `${formatWeight(last.weight)} kg` : '—'}</span>
+                      <span className="muted tiny-text">{last ? `Week ${last.week}` : 'no history'}</span>
                     </span>
-                  </div>
-                  <div className="plan-last">
-                    <span className="display sm">{last ? `${formatWeight(last.weight)} kg` : '—'}</span>
-                    <span className="muted tiny-text">{last ? `Week ${last.week}` : 'no history'}</span>
-                  </div>
+                  </button>
                 </li>
               );
             })}
@@ -120,6 +127,8 @@ export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Ac
         </button>
         <TabBar screen={state.screen} dispatch={dispatch} />
       </div>
+
+      <ExerciseSheet exercise={howTo} onClose={() => setHowTo(null)} />
     </div>
   );
 }

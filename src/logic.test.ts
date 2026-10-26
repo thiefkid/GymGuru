@@ -69,6 +69,15 @@ describe('logging a workout', () => {
     expect(sets.map((x) => x.weight)).toEqual(['55', '50', '55']);
   });
 
+  it('rests only while the movement still has a set to go', () => {
+    let s = startLegs();
+    s = reducer(s, { type: 'toggleSet', exerciseId: 'legpress', set: 0, now: NOW });
+    s = reducer(s, { type: 'toggleSet', exerciseId: 'legpress', set: 1, now: NOW + 1000 });
+    expect(s.restEnd).toBe(NOW + 1000 + 120_000);
+    s = reducer(s, { type: 'toggleSet', exerciseId: 'legpress', set: 2, now: NOW + 2000 });
+    expect(s.restEnd).toBeNull();
+  });
+
   it('steps weight by 2.5 kg and never below zero', () => {
     let s = startLegs();
     s = reducer(s, { type: 'stepWeight', exerciseId: 'legpress', set: 0, delta: 1 });

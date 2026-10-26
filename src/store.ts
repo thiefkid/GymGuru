@@ -182,8 +182,9 @@ export function reducer(state: State, action: Action): State {
         for (let i = action.set + 1; i < sets.length; i++) {
           if (!sets[i].done) sets[i].weight = set.weight;
         }
+        // Rest only while this movement still has a set to go.
         const exercise = program(state.day, state.week).find((e) => e.id === action.exerciseId);
-        restEnd = action.now + (exercise?.rest ?? 90) * 1000;
+        restEnd = sets.some((s) => !s.done) ? action.now + (exercise?.rest ?? 90) * 1000 : null;
       });
       return { ...next, restEnd };
     }
