@@ -4,9 +4,11 @@ import { Settings } from './screens/Settings';
 import { Summary } from './screens/Summary';
 import { Today } from './screens/Today';
 import { useStore } from './store';
+import { useSheetSync } from './sync';
 
 export function App() {
   const [state, dispatch] = useStore();
+  useSheetSync(state, dispatch);
   const props = { state, dispatch };
   return (
     <main className="app">

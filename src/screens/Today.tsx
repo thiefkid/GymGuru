@@ -20,6 +20,11 @@ export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Ac
           <div className="stack-xs">
             <p className="eyebrow">{dateLabel}</p>
             <h1 className="display xl">Let’s train</h1>
+            {state.sync.url && (state.sync.queue.length > 0 || state.sync.error) && (
+              <button className="sync-note" onClick={() => dispatch({ type: 'screen', screen: 'settings' })}>
+                {state.sync.error ? 'Sheet sync problem · tap to see' : `${state.sync.queue.length} waiting to sync to your sheet`}
+              </button>
+            )}
           </div>
           <button className="icon-btn" aria-label="Settings and backup" onClick={() => dispatch({ type: 'screen', screen: 'settings' })}>
             <Icon name="settings" size={20} stroke={1.8} />

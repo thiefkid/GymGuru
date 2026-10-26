@@ -161,23 +161,86 @@ export function exercisesForDay(day: DayId): { id: string; name: string }[] {
   return order.map((id) => ({ id, name: names[id] }));
 }
 
+export function parseKey(key: string): Slot | null {
+  const match = /^w(\d+):(d\d)$/.exec(key);
+  if (!match || !DAYS.some((d) => d.id === match[2])) return null;
+  return { week: Number(match[1]), day: match[2] as DayId };
+}
+
+export interface SetRow {
+  exerciseId: string;
+  exercise: string;
+  set: number;
+  weight: string;
+  reps: number;
+  rpe: number | null;
+}
+
+/** One row per completed set, in program order. */
+export function sessionRows(week: number, day: DayId, session: SessionLog): SetRow[] {
+  const rows: SetRow[] = [];
+  for (const e of program(day, week)) {
+    const log = session.exercises[e.id];
+    log?.sets.forEach((s, i) => {
+      if (s.done) rows.push({ exerciseId: e.id, exercise: e.name, set: i + 1, weight: s.weight, reps: s.reps, rpe: log.rpe });
+    });
+  }
+  return rows;
+}
+
+export function dayName(day: DayId): string {
+  return DAYS.find((d) => d.id === day)?.name ?? day;
+}
+
 export function toCsv(logs: Logs): string {
   const rows = [['date', 'week', 'day', 'exercise', 'set', 'weight_kg', 'reps', 'rpe']];
-  const keys = Object.keys(logs).sort();
-  for (const key of keys) {
-    const match = /^w(\d+):(d\d)$/.exec(key);
-    if (!match) continue;
-    const week = Number(match[1]);
-    const day = match[2] as DayId;
+  for (const key of Object.keys(logs).sort()) {
+    const slot = parseKey(key);
+    if (!slot) continue;
     const session = logs[key];
-    const dayName = DAYS.find((d) => d.id === day)?.name ?? day;
-    for (const e of program(day, week)) {
-      const log = session.exercises[e.id];
-      log?.sets.forEach((s, i) => {
-        if (!s.done) return;
-        rows.push([session.date, String(week), dayName, e.name, String(i + 1), s.weight, String(s.reps), log.rpe === null ? '' : String(log.rpe)]);
-      });
+    for (const r of sessionRows(slot.week, slot.day, session)) {
+      rows.push([session.date, String(slot.week), dayName(slot.day), r.exercise, String(r.set), r.weight, String(r.reps), r.rpe === null ? '' : String(r.rpe)]);
     }
   }
   return rows.map((r) => r.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',')).join('\n') + '\n';
+}
+
+export interface SheetRow {
+  session: string;
+  date: string;
+  exerciseId: string;
+  set: number | string;
+  weight: number | string;
+  reps: number | string;
+  rpe: number | string;
+  savedAt: string;
+}
+
+/**
+ * Rebuilds sessions from the rows in the sheet's log tab. Sets that weren't completed
+ * aren't in the sheet, so they come back as not done.
+ */
+export function sessionsFromRows(rows: SheetRow[]): { logs: Logs; saved: Saved } {
+  const grouped: Record<string, SheetRow[]> = {};
+  for (const r of rows) {
+    if (!parseKey(r.session)) continue;
+    (grouped[r.session] ??= []).push(r);
+  }
+  const logs: Logs = {};
+  const saved: Saved = {};
+  for (const [key, list] of Object.entries(grouped)) {
+    const { week, day } = parseKey(key)!;
+    const exercises: Record<string, ExerciseLog> = {};
+    for (const e of program(day, week)) {
+      const done = list.filter((r) => r.exerciseId === e.id).sort((a, b) => Number(a.set) - Number(b.set));
+      const sets: SetLog[] = done.map((r) => ({ weight: r.weight === '' ? '' : String(r.weight), reps: Number(r.reps) || 0, done: true }));
+      const fill = sets.length ? sets[sets.length - 1].weight : '';
+      while (sets.length < e.sets) sets.push({ weight: fill, reps: e.reps, done: false });
+      const rpe = done.find((r) => r.rpe !== '' && r.rpe !== null)?.rpe;
+      exercises[e.id] = { sets, rpe: rpe === undefined ? null : Number(rpe) };
+    }
+    logs[key] = { date: list[0].date, exercises };
+    saved[key] = list[0].savedAt || list[0].date;
+  }
+  return { logs, saved };
 }

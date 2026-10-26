@@ -14,6 +14,18 @@ import { program, type DayId } from './program';
 
 export type Screen = 'today' | 'session' | 'summary' | 'history' | 'settings';
 
+export interface SyncState {
+  /** Apps Script web app URL; empty when sync isn't set up. */
+  url: string;
+  /** Secret the script accepts; generated on this phone, carried over by backups. */
+  key: string;
+  sheetName: string | null;
+  /** Session keys saved but not yet written to the sheet. */
+  queue: string[];
+  lastSynced: string | null;
+  error: string | null;
+}
+
 export interface State {
   version: 1;
   week: number;
@@ -25,6 +37,7 @@ export interface State {
   historyDay: DayId;
   /** Epoch ms when the current rest ends; persisted so a reload keeps the timer. */
   restEnd: number | null;
+  sync: SyncState;
 }
 
 export type Action =
@@ -43,9 +56,26 @@ export type Action =
   | { type: 'screen'; screen: Screen }
   | { type: 'historyDay'; day: DayId }
   | { type: 'save'; now: string }
-  | { type: 'replace'; state: State };
+  | { type: 'replace'; state: State }
+  | { type: 'syncConnect'; url: string; sheetName: string }
+  | { type: 'syncDisconnect' }
+  | { type: 'syncSetKey'; key: string }
+  | { type: 'syncAll' }
+  | { type: 'syncDone'; key: string; at: string }
+  | { type: 'syncError'; error: string }
+  | { type: 'restore'; logs: Logs; saved: Saved };
 
 const STORAGE_KEY = 'gymguru:v1';
+
+export function randomKey(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Sessions logged in the app (not the ones imported from the sheet's W9-12 tab). */
+function appSaved(state: State): string[] {
+  return Object.keys(state.saved).filter((k) => state.saved[k] !== 'sheet' && state.logs[k]);
+}
 
 export function initialState(): State {
   const saved: Saved = { 'w1:d3': 'sheet' };
@@ -60,6 +90,7 @@ export function initialState(): State {
     exerciseIndex: 0,
     historyDay: slot.day,
     restEnd: null,
+    sync: { url: '', key: randomKey(), sheetName: null, queue: [], lastSynced: null, error: null },
   };
 }
 
@@ -181,12 +212,46 @@ export function reducer(state: State, action: Action): State {
     case 'historyDay':
       return { ...state, historyDay: action.day };
     case 'save': {
-      const saved = { ...state.saved, [currentKey(state)]: action.now };
+      const key = currentKey(state);
+      const saved = { ...state.saved, [key]: action.now };
       const slot = nextSlot(saved);
-      return { ...state, saved, week: slot.week, day: slot.day, screen: 'today', exerciseIndex: 0, restEnd: null };
+      const queue = [...state.sync.queue.filter((k) => k !== key), key];
+      return {
+        ...state,
+        saved,
+        week: slot.week,
+        day: slot.day,
+        screen: 'today',
+        exerciseIndex: 0,
+        restEnd: null,
+        sync: { ...state.sync, queue },
+      };
     }
     case 'replace':
       return action.state;
+    case 'syncConnect':
+      return {
+        ...state,
+        sync: { ...state.sync, url: action.url, sheetName: action.sheetName, error: null, queue: appSaved(state) },
+      };
+    case 'syncDisconnect':
+      return { ...state, sync: { ...state.sync, url: '', sheetName: null, queue: [], error: null } };
+    case 'syncSetKey':
+      return { ...state, sync: { ...state.sync, key: action.key } };
+    case 'syncAll':
+      return { ...state, sync: { ...state.sync, queue: appSaved(state), error: null } };
+    case 'syncDone':
+      return {
+        ...state,
+        sync: { ...state.sync, queue: state.sync.queue.filter((k) => k !== action.key), lastSynced: action.at, error: null },
+      };
+    case 'syncError':
+      return { ...state, sync: { ...state.sync, error: action.error } };
+    case 'restore': {
+      const saved = { ...state.saved, ...action.saved };
+      const slot = nextSlot(saved);
+      return { ...state, logs: { ...state.logs, ...action.logs }, saved, week: slot.week, day: slot.day, exerciseIndex: 0 };
+    }
   }
 }
 

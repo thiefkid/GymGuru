@@ -23,12 +23,40 @@ DB bench 45, lat pulldown 25) come from the sheet and count as history.
 
 ### Where the data lives
 
-Everything is stored in the browser on your phone (`localStorage`). There is no server or
-account. That means:
+Workouts are stored in the browser on your phone (`localStorage`), so the app works with no
+signal. With Google Sheet sync set up (below), every saved workout is also copied to your
+sheet, which is the copy that survives a cleared browser or a new phone. Without it:
 
 - Add it to your home screen. Installed web apps keep their data; Safari can clear data of
   sites you haven't opened in a while.
 - Download a backup from Settings now and then, and before switching phones.
+
+## Google Sheet sync
+
+Saving a workout also writes its sets to a **GymGuru Log** tab in your Google Sheet (one
+row per completed set: session, date, week, day, exercise, set, weight, reps, RPE). If the
+phone is offline, the workout waits and is sent when it's back online. On a new phone,
+**Settings → Restore from Google Sheet** brings your history back.
+
+One-time setup (easiest on a computer):
+
+1. Open the Google Sheet → **Extensions → Apps Script**.
+2. Replace the code with [`apps-script/Code.gs`](apps-script/Code.gs) (the app's
+   Settings has a **Copy script** button).
+3. **Deploy → New deployment →** type **Web app**, **Execute as: Me**,
+   **Who has access: Anyone** → **Deploy**. Allow access; Google calls the script
+   unverified because it's your own, so choose **Advanced → Go to …**.
+4. Copy the web app URL (ends in `/exec`), send it to your phone, and paste it into
+   **Settings → Google Sheet sync → Connect**.
+
+How it's protected: the URL is unguessable, and the first phone that connects registers its
+random sync key with the script; requests with any other key are refused. To connect another
+phone, restore its backup file, or paste the sync key (Settings → Sync key) under
+"Already set up on another phone?". To start over, delete `SYNC_KEY` under the Apps Script
+project's **Project Settings → Script properties**.
+
+If you change the script later, use **Deploy → Manage deployments → Edit → Version: New
+version** so the URL stays the same.
 
 ## Deployment
 
