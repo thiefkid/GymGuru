@@ -3,6 +3,7 @@ import {
   WEIGHT_STEP,
   buildSession,
   formatWeight,
+  lastUsedWeek,
   nextSlot,
   parseWeight,
   sessionKey,
@@ -10,7 +11,7 @@ import {
   type Saved,
   type SessionLog,
 } from './logic';
-import { program, type DayId } from './program';
+import { CYCLE_WEEKS, program, type DayId } from './program';
 
 export type Screen = 'today' | 'session' | 'summary' | 'history' | 'settings';
 
@@ -38,6 +39,8 @@ export interface State {
   /** Epoch ms when the current rest ends; persisted so a reload keeps the timer. */
   restEnd: number | null;
   sync: SyncState;
+  /** Weeks in the block: the sheet's 4 plus any added in the app. */
+  weeks: number;
 }
 
 export type Action =
@@ -63,7 +66,9 @@ export type Action =
   | { type: 'syncAll' }
   | { type: 'syncDone'; key: string; at: string }
   | { type: 'syncError'; error: string }
-  | { type: 'restore'; logs: Logs; saved: Saved };
+  | { type: 'restore'; logs: Logs; saved: Saved }
+  | { type: 'addWeek' }
+  | { type: 'removeWeek' };
 
 const STORAGE_KEY = 'gymguru:v1';
 
@@ -91,7 +96,19 @@ export function initialState(): State {
     historyDay: slot.day,
     restEnd: null,
     sync: { url: '', key: randomKey(), sheetName: null, queue: [], lastSynced: null, error: null },
+    weeks: CYCLE_WEEKS,
   };
+}
+
+/** Fills in fields older saves don't have and makes room for every week that holds a workout. */
+export function normalize(state: State): State {
+  const weeks = Math.max(CYCLE_WEEKS, Number(state.weeks) || 0, lastUsedWeek(state.logs, state.saved));
+  return weeks === state.weeks ? state : { ...state, weeks };
+}
+
+/** Whether the last week can be dropped: it was added in the app and nothing is logged in it. */
+export function canRemoveWeek(state: State): boolean {
+  return state.weeks > CYCLE_WEEKS && lastUsedWeek(state.logs, state.saved) < state.weeks;
 }
 
 export function isState(value: unknown): value is State {
@@ -112,7 +129,7 @@ function load(): State {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (isState(parsed)) return { ...initialState(), ...parsed };
+      if (isState(parsed)) return normalize({ ...initialState(), ...parsed });
     }
   } catch {
     // Unreadable storage: start fresh.
@@ -215,7 +232,7 @@ export function reducer(state: State, action: Action): State {
     case 'save': {
       const key = currentKey(state);
       const saved = { ...state.saved, [key]: action.now };
-      const slot = nextSlot(saved);
+      const slot = nextSlot(saved, state.weeks);
       const queue = [...state.sync.queue.filter((k) => k !== key), key];
       return {
         ...state,
@@ -229,7 +246,7 @@ export function reducer(state: State, action: Action): State {
       };
     }
     case 'replace':
-      return action.state;
+      return normalize(action.state);
     case 'syncConnect':
       return {
         ...state,
@@ -249,9 +266,18 @@ export function reducer(state: State, action: Action): State {
     case 'syncError':
       return { ...state, sync: { ...state.sync, error: action.error } };
     case 'restore': {
-      const saved = { ...state.saved, ...action.saved };
-      const slot = nextSlot(saved);
-      return { ...state, logs: { ...state.logs, ...action.logs }, saved, week: slot.week, day: slot.day, exerciseIndex: 0 };
+      const next = normalize({ ...state, logs: { ...state.logs, ...action.logs }, saved: { ...state.saved, ...action.saved } });
+      const slot = nextSlot(next.saved, next.weeks);
+      return { ...next, week: slot.week, day: slot.day, exerciseIndex: 0 };
+    }
+    case 'addWeek': {
+      const weeks = state.weeks + 1;
+      return { ...state, weeks, week: weeks, day: 'd1', exerciseIndex: 0 };
+    }
+    case 'removeWeek': {
+      if (!canRemoveWeek(state)) return state;
+      const weeks = state.weeks - 1;
+      return { ...state, weeks, week: Math.min(state.week, weeks) };
     }
   }
 }

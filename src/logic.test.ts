@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildSession, exerciseResult, lastWeight, nextSlot, sessionStats, toCsv } from './logic';
+import { blockComplete, buildSession, exerciseResult, lastWeight, nextSlot, sessionStats, toCsv } from './logic';
 import { program } from './program';
-import { currentSession, initialState, reducer, type State } from './store';
+import { canRemoveWeek, currentSession, initialState, normalize, reducer, type State } from './store';
 
 const NOW = 1_800_000_000_000;
 
@@ -113,5 +113,70 @@ describe('logging a workout', () => {
     s = reducer(s, { type: 'toggleSet', exerciseId: 'legpress', set: 0, now: NOW });
     s = reducer(s, { type: 'setRpe', exerciseId: 'legpress', rpe: 8 });
     expect(toCsv(s.logs)).toBe('date,week,day,exercise,set,weight_kg,reps,rpe\n2026-10-26,2,Legs,Leg Press,1,40,10,8\n');
+  });
+});
+
+describe('extending the block', () => {
+  it('repeats the 4-week cycle', () => {
+    const names = (day: 'd1' | 'd3', week: number) => program(day, week).map((e) => e.name);
+    expect(names('d1', 5)).toEqual(names('d1', 1));
+    expect(names('d1', 6)).toEqual(names('d1', 2));
+    expect(names('d1', 7).includes('Incline Press Machine')).toBe(true);
+    expect(names('d3', 9)).toEqual(names('d3', 1));
+  });
+
+  it('compares a variant with the last time it was done', () => {
+    let s = initialState();
+    s = reducer(s, { type: 'addWeek' });
+    s = reducer(s, { type: 'addWeek' });
+    // Week 4: Smith Bulgarian split squat at 40 kg. Week 5: DB again, at 12 kg.
+    for (const [week, weight] of [[4, '40'], [5, '12']] as const) {
+      s = reducer(s, { type: 'selectWeek', week });
+      s = reducer(s, { type: 'selectDay', day: 'd3' });
+      s = reducer(s, { type: 'start', date: '2026-11-01' });
+      s = reducer(s, { type: 'setWeight', exerciseId: 'bss', set: 0, value: weight });
+      s = reducer(s, { type: 'toggleSet', exerciseId: 'bss', set: 0, now: NOW });
+    }
+    // Week 5's DB version looks back to week 1's DB weight from the sheet, not week 4's Smith.
+    expect(lastWeight(s.logs, 5, 'd3', 'bss')).toEqual({ weight: 10, week: 1, source: 'sheet', variant: 'DB' });
+    // Week 6 is Smith again: week 4, not week 5's DB.
+    expect(lastWeight(s.logs, 6, 'd3', 'bss')).toEqual({ weight: 40, week: 4, source: 'app' });
+    // Without a matching variant it falls back to the latest week.
+    expect(lastWeight(s.logs, 2, 'd3', 'bss')).toMatchObject({ weight: 10, week: 1 });
+  });
+
+  it('moves on past the last week only once a week is added', () => {
+    const all: Record<string, string> = {};
+    for (let w = 1; w <= 4; w++) for (const d of ['d1', 'd2', 'd3', 'd4']) all[`w${w}:${d}`] = 'x';
+    expect(nextSlot(all, 4)).toEqual({ week: 4, day: 'd4' });
+    expect(blockComplete(all, 4)).toBe(true);
+    expect(nextSlot(all, 5)).toEqual({ week: 5, day: 'd1' });
+    expect(blockComplete(all, 5)).toBe(false);
+  });
+
+  it('adds weeks, and removes only empty added ones', () => {
+    let s = reducer(initialState(), { type: 'addWeek' });
+    expect({ weeks: s.weeks, week: s.week, day: s.day }).toEqual({ weeks: 5, week: 5, day: 'd1' });
+    expect(canRemoveWeek(s)).toBe(true);
+    expect(reducer(s, { type: 'removeWeek' })).toMatchObject({ weeks: 4, week: 4 });
+    // Never below the sheet's 4 weeks.
+    expect(reducer(initialState(), { type: 'removeWeek' }).weeks).toBe(4);
+    // Not once something is logged in it.
+    s = reducer(s, { type: 'start', date: '2026-11-01' });
+    s = reducer(s, { type: 'toggleSet', exerciseId: 'dbbench', set: 0, now: NOW });
+    expect(canRemoveWeek(s)).toBe(false);
+    expect(reducer(s, { type: 'removeWeek' }).weeks).toBe(5);
+  });
+
+  it('makes room for weeks found in old saves and restores', () => {
+    const old = { ...initialState(), weeks: undefined } as unknown as State;
+    expect(normalize(old).weeks).toBe(4);
+    const restored = reducer(initialState(), {
+      type: 'restore',
+      logs: { 'w6:d2': buildSession({}, 6, 'd2', '2026-11-10') },
+      saved: { 'w6:d2': '2026-11-10T10:00:00.000Z' },
+    });
+    expect(restored.weeks).toBe(6);
+    expect({ week: restored.week, day: restored.day }).toEqual({ week: 6, day: 'd3' });
   });
 });

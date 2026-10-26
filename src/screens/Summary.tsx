@@ -1,7 +1,7 @@
 import type { Dispatch } from 'react';
 import { Icon } from '../components/Icon';
 import { exerciseResult, formatWeight, lastWeight, sessionStats } from '../logic';
-import { BLOCK_NAME, DAYS, program } from '../program';
+import { DAYS, blockName, program } from '../program';
 import { currentSession, type Action, type State } from '../store';
 
 export function Summary({ state, dispatch }: { state: State; dispatch: Dispatch<Action> }) {
@@ -21,7 +21,7 @@ export function Summary({ state, dispatch }: { state: State; dispatch: Dispatch<
           <p className="eyebrow">Workout complete · {dateLabel}</p>
           <h1 className="display xxl">{day.name} done</h1>
           <p className="muted">
-            Week {state.week} · Day {day.n} of block {BLOCK_NAME}
+            Week {state.week} · Day {day.n} of block {blockName(state.weeks)}
           </p>
         </div>
 

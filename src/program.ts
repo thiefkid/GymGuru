@@ -22,8 +22,19 @@ export interface Exercise {
   optional?: boolean;
 }
 
-export const BLOCK_NAME = 'W9–12';
+/** The sheet's block is 4 weeks; extra weeks repeat it as a cycle, like its W1-4, W5-8 and W9-12 tabs. */
+export const CYCLE_WEEKS = 4;
 export const WEEKS = [1, 2, 3, 4];
+
+/** The block is weeks 9–12 of the sheet's program, plus any weeks added in the app. */
+export function blockName(weeks: number): string {
+  return `W9–${8 + weeks}`;
+}
+
+/** Position within the 4-week cycle (week 5 plays like week 1, week 7 like week 3, …). */
+export function cycleWeek(week: number): number {
+  return ((week - 1) % CYCLE_WEEKS) + 1;
+}
 
 export const DAYS: Day[] = [
   { id: 'd1', n: 1, name: 'Chest', focus: 'Chest · triceps' },
@@ -44,7 +55,8 @@ function ex(
   return { id, name, sets, reps, rpe, rest, ...extra };
 }
 
-export function program(day: DayId, week: number): Exercise[] {
+export function program(day: DayId, programWeek: number): Exercise[] {
+  const week = cycleWeek(programWeek);
   switch (day) {
     case 'd1': {
       const list = [
@@ -87,7 +99,7 @@ export function program(day: DayId, week: number): Exercise[] {
         ex('press', week === 1 ? 'DB Shoulder Press' : 'Close-grip Shoulder Press', 3, 10, 8, 120),
         ex('lateral', 'Cable Lateral Raise', 3, 12, 8, 60),
       ];
-      // The sheet lists this in week 1 only, with no sets or reps.
+      // The sheet lists this in the first week of the cycle only, with no sets or reps.
       if (week === 1) list.push(ex('yraise', 'Cable Y-raise / DB Lateral', 3, 12, 8, 60, { optional: true }));
       list.push(
         ex('front', 'Front Raise', 3, 12, 8, 60),

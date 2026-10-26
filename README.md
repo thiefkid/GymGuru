@@ -6,9 +6,15 @@ and charts your top weight per exercise week by week.
 
 ## Using it
 
-- **Today**: pick the week (W1–W4) and day (Chest, Back, Legs, Shoulders). The plan lists
+- **Today**: pick the week and day (Chest, Back, Legs, Shoulders). The plan lists
   sets × reps, target RPE, rest and what you lifted last time. It opens on the day after
   the last one you logged.
+- **More weeks**: tap **+** after the last week (or Settings → Program length) to add one.
+  Added weeks repeat the sheet's 4-week cycle, the way its W1-4, W5-8 and W9-12 tabs do:
+  week 5 is like week 1 (pause bench, high-stance leg press, DB split squat, DB shoulder
+  press), week 7 like week 3 (incline press added). "Last time" compares like with like, so
+  week 5's DB split squat shows week 1's DB weight, not week 4's Smith weight. An added week
+  can be removed from Settings while it's empty.
 - **Workout**: set the weight (±2.5 kg) and reps, then press **Done · Rest** at the bottom.
   That logs the set, copies the weight to the remaining sets and starts the rest
   countdown, which beeps when it ends (iPhone: if the silent switch is off). On the last

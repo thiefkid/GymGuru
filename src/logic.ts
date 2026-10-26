@@ -1,4 +1,4 @@
-import { DAYS, SHEET_HISTORY, WEEKS, program, type DayId } from './program';
+import { CYCLE_WEEKS, DAYS, SHEET_HISTORY, WEEKS, program, type DayId } from './program';
 
 export interface SetLog {
   /** Kept as typed text so a half-typed "42." survives re-renders. */
@@ -71,13 +71,21 @@ export function topWeight(logs: Logs, week: number, day: DayId, exerciseId: stri
   return null;
 }
 
-/** The most recent earlier week of the block in which this exercise has a weight. */
+/**
+ * The most recent earlier week in which this exercise has a weight, preferring the same
+ * variant: week 5's DB Bulgarian split squat compares with week 1's, not week 4's Smith one.
+ */
 export function lastWeight(logs: Logs, week: number, day: DayId, exerciseId: string): PastWeight | null {
+  const nameIn = (w: number) => program(day, w).find((e) => e.id === exerciseId)?.name;
+  const name = nameIn(week);
+  let fallback: PastWeight | null = null;
   for (let w = week - 1; w >= 1; w--) {
     const top = topWeight(logs, w, day, exerciseId);
-    if (top) return { ...top, week: w };
+    if (!top) continue;
+    if (nameIn(w) === name) return { ...top, week: w };
+    fallback ??= { ...top, week: w };
   }
-  return null;
+  return fallback;
 }
 
 export function buildSession(logs: Logs, week: number, day: DayId, date: string): SessionLog {
@@ -137,15 +145,33 @@ export function exerciseResult(log: ExerciseLog, last: PastWeight | null) {
   return { top, bestReps, setsDone, trend, delta };
 }
 
-const ALL_SLOTS: Slot[] = WEEKS.flatMap((week) => DAYS.map((d) => ({ week, day: d.id })));
+function slots(weeks: number): Slot[] {
+  return Array.from({ length: weeks }, (_, i) => i + 1).flatMap((week) => DAYS.map((d) => ({ week, day: d.id })));
+}
 
 /** The slot after the furthest one saved, so "today" follows on from the last logged day. */
-export function nextSlot(saved: Saved): Slot {
+export function nextSlot(saved: Saved, weeks: number = CYCLE_WEEKS): Slot {
+  const all = slots(weeks);
   let furthest = -1;
-  ALL_SLOTS.forEach((slot, i) => {
+  all.forEach((slot, i) => {
     if (saved[sessionKey(slot.week, slot.day)]) furthest = i;
   });
-  return ALL_SLOTS[Math.min(furthest + 1, ALL_SLOTS.length - 1)];
+  return all[Math.min(furthest + 1, all.length - 1)];
+}
+
+/** Every day of every week has been saved. */
+export function blockComplete(saved: Saved, weeks: number): boolean {
+  return slots(weeks).every((slot) => saved[sessionKey(slot.week, slot.day)]);
+}
+
+/** The highest week number that has a session logged or saved. */
+export function lastUsedWeek(logs: Logs, saved: Saved): number {
+  let max = 0;
+  for (const key of [...Object.keys(logs), ...Object.keys(saved)]) {
+    const slot = parseKey(key);
+    if (slot && (saved[key] || hasProgress(logs[key]))) max = Math.max(max, slot.week);
+  }
+  return max;
 }
 
 /** Every exercise that appears on a day across the block, with its latest name. */

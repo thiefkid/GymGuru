@@ -3,7 +3,8 @@ import scriptSource from '../../apps-script/Code.gs?raw';
 import { Icon } from '../components/Icon';
 import { toCsv } from '../logic';
 import { connect, fetchFromSheet, isScriptUrl } from '../sync';
-import { initialState, isState, today, type Action, type State } from '../store';
+import { CYCLE_WEEKS, blockName } from '../program';
+import { canRemoveWeek, initialState, isState, today, type Action, type State } from '../store';
 
 function download(name: string, type: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -225,6 +226,40 @@ export function Settings({ state, dispatch }: { state: State; dispatch: Dispatch
         <SheetSync state={state} dispatch={dispatch} say={setMessage} />
 
         <section className="card stack-sm">
+          <h2 className="strong">Program length</h2>
+          <p className="muted small">
+            Block {blockName(state.weeks)}: {state.weeks} weeks. Added weeks repeat your sheet’s 4-week cycle, so week 5 is like week 1, week 6 like week 2,
+            and so on, with your latest weights as the target.
+          </p>
+          <div className="stack-sm">
+            <button
+              className="secondary"
+              onClick={() => {
+                dispatch({ type: 'addWeek' });
+                setMessage(`Week ${state.weeks + 1} added.`);
+              }}
+            >
+              Add week {state.weeks + 1}
+            </button>
+            {state.weeks > CYCLE_WEEKS && (
+              <button
+                className="secondary"
+                disabled={!canRemoveWeek(state)}
+                onClick={() => {
+                  dispatch({ type: 'removeWeek' });
+                  setMessage(`Week ${state.weeks} removed.`);
+                }}
+              >
+                Remove week {state.weeks}
+              </button>
+            )}
+            {state.weeks > CYCLE_WEEKS && !canRemoveWeek(state) && (
+              <p className="muted tiny-text">Week {state.weeks} has workouts in it, so it can’t be removed.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="card stack-sm">
           <h2 className="strong">Backup file</h2>
           <p className="muted small">
             Workouts live on this phone ({sessions} {sessions === 1 ? 'session' : 'sessions'} so far). A backup file includes everything, including the sync key.
@@ -272,7 +307,7 @@ export function Settings({ state, dispatch }: { state: State; dispatch: Dispatch
             className="danger"
             onClick={() => {
               if (confirm('Delete every logged workout on this phone?')) {
-                dispatch({ type: 'replace', state: { ...initialState(), screen: 'settings', sync: { ...state.sync, queue: [], error: null } } });
+                dispatch({ type: 'replace', state: { ...initialState(), screen: 'settings', weeks: state.weeks, sync: { ...state.sync, queue: [], error: null } } });
                 setMessage('All workouts deleted from this phone.');
               }
             }}

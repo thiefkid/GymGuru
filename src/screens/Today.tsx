@@ -1,13 +1,19 @@
-import { useState, type Dispatch } from 'react';
+import { useEffect, useRef, useState, type Dispatch } from 'react';
 import { ExerciseSheet } from '../components/ExerciseSheet';
 import { Icon } from '../components/Icon';
 import { TabBar } from '../components/TabBar';
-import { formatWeight, hasProgress, lastWeight, sessionKey } from '../logic';
-import { BLOCK_NAME, DAYS, WEEKS, program, type Exercise } from '../program';
+import { blockComplete, formatWeight, hasProgress, lastWeight, sessionKey } from '../logic';
+import { DAYS, blockName, cycleWeek, program, type Exercise } from '../program';
 import { currentKey, today, type Action, type State } from '../store';
 
 export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Action> }) {
   const [howTo, setHowTo] = useState<Exercise | null>(null);
+  const weekStrip = useRef<HTMLDivElement>(null);
+  const weeks = Array.from({ length: state.weeks }, (_, i) => i + 1);
+
+  useEffect(() => {
+    weekStrip.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [state.week, state.weeks]);
   const list = program(state.day, state.week);
   const day = DAYS.find((d) => d.id === state.day)!;
   const totalSets = list.reduce((n, e) => n + e.sets, 0);
@@ -35,11 +41,13 @@ export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Ac
 
         <section className="stack-sm">
           <div className="row between baseline">
-            <h2 className="eyebrow">Block {BLOCK_NAME}</h2>
-            <span className="muted small">Week {state.week} of {WEEKS.length}</span>
+            <h2 className="eyebrow">Block {blockName(state.weeks)}</h2>
+            <span className="muted small">
+              Week {state.week} of {state.weeks}
+            </span>
           </div>
-          <div className="row gap-sm">
-            {WEEKS.map((w) => {
+          <div className="week-strip" ref={weekStrip}>
+            {weeks.map((w) => {
               const logged = DAYS.filter((d) => state.saved[sessionKey(w, d.id)]).length;
               return (
                 <button
@@ -53,7 +61,24 @@ export function Today({ state, dispatch }: { state: State; dispatch: Dispatch<Ac
                 </button>
               );
             })}
+            <button className="week-pill week-add" aria-label={`Add week ${state.weeks + 1}`} onClick={() => dispatch({ type: 'addWeek' })}>
+              <Icon name="plus" size={18} stroke={2.4} />
+              <span className="week-sub">Week</span>
+            </button>
           </div>
+          {blockComplete(state.saved, state.weeks) && (
+            <div className="card block-done">
+              <div className="stack-2 grow">
+                <span className="strong">All {state.weeks} weeks logged</span>
+                <span className="muted tiny-text">
+                  Week {state.weeks + 1} repeats the plan for week {cycleWeek(state.weeks + 1)}, with your latest weights as the target.
+                </span>
+              </div>
+              <button className="accent-btn" onClick={() => dispatch({ type: 'addWeek' })}>
+                Add week {state.weeks + 1}
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="grid-2">

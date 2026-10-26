@@ -743,10 +743,19 @@ ul {
 }
 
 .bars {
+  flex: none;
+  max-width: 55%;
   display: grid;
-  grid-template-columns: repeat(4, 30px);
+  grid-auto-flow: column;
+  grid-auto-columns: 30px;
   gap: 6px;
   align-items: end;
+  /* More weeks than fit scroll sideways; History starts them at the latest week. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.bars::-webkit-scrollbar {
+  display: none;
 }
 .bar-col {
   display: flex;
@@ -1074,4 +1083,35 @@ details summary {
   letter-spacing: 0;
   text-transform: none;
   opacity: 0.75;
+}
+
+/* ---------- weeks ---------- */
+
+.week-strip {
+  display: flex;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 0 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.week-strip::-webkit-scrollbar {
+  display: none;
+}
+.week-strip .week-pill {
+  flex: 1 0 64px;
+}
+.week-strip .week-add {
+  flex: 0 0 56px;
+  border-style: dashed;
+  border-color: var(--line-strong);
+  background: transparent;
+  color: var(--muted);
+}
+
+.block-done {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-color: var(--accent-line);
 }
