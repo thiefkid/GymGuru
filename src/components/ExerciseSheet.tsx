@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 
 type VideoState = 'loading' | 'ready' | 'failed';
 
-function Video({ id, name }: { id: string; name: string }) {
+function Video({ id, name, searchUrl }: { id: string; name: string; searchUrl: string }) {
   const host = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<VideoState>('loading');
 
@@ -55,7 +55,7 @@ function Video({ id, name }: { id: string; name: string }) {
         <div className="video-cover">
           <p className="small">{navigator.onLine ? 'This video can’t play here.' : 'You’re offline. Videos need an internet connection.'}</p>
           {navigator.onLine && (
-            <a className="accent-btn link-btn" href={youtubeSearchUrl(name)} target="_blank" rel="noopener noreferrer">
+            <a className="accent-btn link-btn" href={searchUrl} target="_blank" rel="noopener noreferrer">
               Search YouTube
             </a>
           )}
@@ -65,18 +65,32 @@ function Video({ id, name }: { id: string; name: string }) {
   );
 }
 
-/** Bottom sheet with a how-to video and form cues for one movement. */
-export function ExerciseSheet({ exercise, onClose }: { exercise: Exercise | null; onClose: () => void }) {
+/** What the how-to sheet shows for one movement. */
+export interface HowTo {
+  name: string;
+  /** Small heading above the name. */
+  eyebrow?: string;
+  /** The prescription under the name, such as "3 × 10 · RPE 8 · 2 min rest". */
+  meta?: string;
+  video?: string;
+  cues?: string[];
+  /** Short sections after the form tips, such as why it helps; 'knee' ones are highlighted. */
+  notes?: { title: string; text: string; tone?: 'knee' }[];
+  /** YouTube results for more videos of it. */
+  searchUrl: string;
+}
+
+/** Bottom sheet with a how-to video, form cues and notes for one movement. */
+export function HowToSheet({ item, onClose }: { item: HowTo | null; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const open = !!item;
 
   useEffect(() => {
     const d = dialog.current;
     if (!d) return;
-    if (exercise && !d.open) d.showModal();
-    if (!exercise && d.open) d.close();
-  }, [exercise]);
-
-  const guide = exercise ? guideFor(exercise.name) : undefined;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
 
   return (
     <dialog
@@ -89,46 +103,50 @@ export function ExerciseSheet({ exercise, onClose }: { exercise: Exercise | null
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      {exercise && (
+      {item && (
         <div className="sheet-panel">
           <div className="sheet-body">
             <span className="sheet-handle" aria-hidden="true" />
             <header className="row between start gap-md">
               <div className="stack-xs grow">
-                <p className="eyebrow tiny">How to do it</p>
+                <p className="eyebrow tiny">{item.eyebrow ?? 'How to do it'}</p>
                 <h2 id="sheet-title" className="display lg">
-                  {exercise.name}
+                  {item.name}
                 </h2>
-                <p className="muted tiny-text">
-                  {exercise.sets} × {exercise.reps}
-                  {exercise.rpe ? ` · RPE ${exercise.rpe}` : ''} · {exercise.rest / 60} min rest
-                </p>
+                {item.meta && <p className="muted tiny-text">{item.meta}</p>}
               </div>
               <button className="icon-btn round" aria-label="Close" onClick={onClose}>
                 <Icon name="close" />
               </button>
             </header>
 
-            {guide && <Video id={guide.video} name={exercise.name} />}
+            {item.video && <Video id={item.video} name={item.name} searchUrl={item.searchUrl} />}
 
-            {guide && (
+            {item.cues && item.cues.length > 0 && (
               <section className="stack-sm">
                 <h3 className="strong">Form tips</h3>
                 <ol className="cues">
-                  {guide.cues.map((cue) => (
+                  {item.cues.map((cue) => (
                     <li key={cue}>{cue}</li>
                   ))}
                 </ol>
               </section>
             )}
 
+            {item.notes?.map((note) => (
+              <section key={note.title} className={`sheet-note ${note.tone === 'knee' ? 'is-knee' : ''}`}>
+                <h3 className="eyebrow tiny accent">{note.title}</h3>
+                <p className="small">{note.text}</p>
+              </section>
+            ))}
+
             <div className="stack-sm">
-              {guide && (
-                <a className="secondary link-btn" href={youtubeWatchUrl(guide.video)} target="_blank" rel="noopener noreferrer">
+              {item.video && (
+                <a className="secondary link-btn" href={youtubeWatchUrl(item.video)} target="_blank" rel="noopener noreferrer">
                   Open this video in YouTube
                 </a>
               )}
-              <a className="secondary link-btn" href={youtubeSearchUrl(exercise.name)} target="_blank" rel="noopener noreferrer">
+              <a className="secondary link-btn" href={item.searchUrl} target="_blank" rel="noopener noreferrer">
                 More videos on YouTube
               </a>
             </div>
@@ -137,4 +155,17 @@ export function ExerciseSheet({ exercise, onClose }: { exercise: Exercise | null
       )}
     </dialog>
   );
+}
+
+/** How-to sheet for a movement of the W9-12 program. */
+export function ExerciseSheet({ exercise, onClose }: { exercise: Exercise | null; onClose: () => void }) {
+  const guide = exercise ? guideFor(exercise.name) : undefined;
+  const item: HowTo | null = exercise && {
+    name: exercise.name,
+    meta: `${exercise.sets} × ${exercise.reps}${exercise.rpe ? ` · RPE ${exercise.rpe}` : ''} · ${exercise.rest / 60} min rest`,
+    video: guide?.video,
+    cues: guide?.cues,
+    searchUrl: youtubeSearchUrl(exercise.name),
+  };
+  return <HowToSheet item={item} onClose={onClose} />;
 }

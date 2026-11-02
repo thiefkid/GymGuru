@@ -13,6 +13,7 @@ const PATHS = {
     </>
   ),
   chart: <path d="M5 20v-6M12 20V5M19 20v-10" />,
+  mountain: <path d="M2.5 19.5 8 11l2.6 3.8L14 5.5l7.5 14z" />,
   timer: (
     <>
       <circle cx="12" cy="13" r="8" />

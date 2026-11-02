@@ -13,6 +13,10 @@ export function TabBar({ screen, dispatch }: { screen: Screen; dispatch: Dispatc
         <Icon name="chart" size={18} stroke={2} />
         History
       </button>
+      <button className="tab" aria-current={screen === 'snow' ? 'page' : undefined} onClick={() => dispatch({ type: 'screen', screen: 'snow' })}>
+        <Icon name="mountain" size={18} stroke={2} />
+        Snowboard
+      </button>
     </nav>
   );
 }

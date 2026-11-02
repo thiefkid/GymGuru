@@ -1,55 +1,21 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
-import { beep, primeAudio } from '../beep';
+import { primeAudio } from '../beep';
 import { ExerciseSheet } from '../components/ExerciseSheet';
 import { Icon } from '../components/Icon';
+import { timeUp, useCountdown, useWakeLock } from '../hooks';
 import { WEIGHT_STEP, formatClock, formatWeight, lastWeight, sessionStats } from '../logic';
 import { DAYS, program, type Exercise } from '../program';
 import { currentSession, type Action, type State } from '../store';
 
 const RPE_OPTIONS = [6, 7, 8, 9, 10];
 
-/** Re-renders every half second while a rest is running, and beeps and buzzes when it ends. */
+/** Counts down the rest, and beeps and buzzes when it ends. */
 function useRestClock(restEnd: number | null, dispatch: Dispatch<Action>) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!restEnd) return;
-    const tick = () => {
-      const t = Date.now();
-      setNow(t);
-      if (t >= restEnd) {
-        // Only alert when the rest ran out just now, not when reopening the app long after.
-        if (t - restEnd < 5000) {
-          beep();
-          navigator.vibrate?.([200, 100, 200]);
-        }
-        dispatch({ type: 'skipRest' });
-      }
-    };
-    tick();
-    const id = setInterval(tick, 500);
-    return () => clearInterval(id);
-  }, [restEnd, dispatch]);
-  return restEnd ? Math.max(0, (restEnd - now) / 1000) : 0;
-}
-
-/** Keeps the phone screen awake during a workout, where supported. */
-function useWakeLock() {
-  useEffect(() => {
-    let lock: WakeLockSentinel | null = null;
-    const request = () => {
-      navigator.wakeLock
-        ?.request('screen')
-        .then((l) => (lock = l))
-        .catch(() => {});
-    };
-    const onVisible = () => document.visibilityState === 'visible' && request();
-    request();
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      lock?.release().catch(() => {});
-    };
-  }, []);
+  return useCountdown(restEnd, (fresh) => {
+    // Only alert when the rest ran out just now, not when reopening the app long after.
+    if (fresh) timeUp();
+    dispatch({ type: 'skipRest' });
+  });
 }
 
 export function Session({ state, dispatch }: { state: State; dispatch: Dispatch<Action> }) {

@@ -76,7 +76,7 @@ export function Summary({ state, dispatch }: { state: State; dispatch: Dispatch<
   );
 }
 
-function Stat({ label, value, of, unit }: { label: string; value: number | string; of?: number; unit?: string }) {
+export function Stat({ label, value, of, unit }: { label: string; value: number | string; of?: number; unit?: string }) {
   return (
     <div className="stat">
       <span className="eyebrow tiny">{label}</span>

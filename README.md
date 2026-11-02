@@ -2,7 +2,8 @@
 
 A phone-first workout logger for the **W9–12** program from the "shawn" Google Sheet.
 It shows what to do today, records the weight and reps of every set, runs the rest timer,
-and charts your top weight per exercise week by week.
+and charts your top weight per exercise week by week. A separate **Snowboard** tab holds an
+8-week prep plan for a first snowboard trip.
 
 ## Using it
 
@@ -65,6 +66,30 @@ project's **Project Settings → Script properties**.
 
 If you change the script later, use **Deploy → Manage deployments → Edit → Version: New
 version** so the URL stays the same.
+
+## Snowboard prep
+
+The **Snowboard** tab is an 8-week plan for a first snowboard trip on **Fri 25 Dec 2026**: 3 sessions
+a week, built around an old right-knee meniscus injury and a weak core.
+
+- **Weeks 1–2 Foundation, 3–5 Build, 6–7 Ride-ready, 8 Taper** (two light sessions, then rest the
+  day before the trip). Weeks are counted back from the trip date, and the tab opens on this
+  week's next session; missed sessions aren't made up.
+- **Sessions A Strength, B Control, C Stamina**, each starting with the same knee-friendly warm-up
+  (easy bike, band knee extensions, mini-band side walks, 90/90 hip switches).
+- **Every movement** has a demo video, form tips, why it helps on the board and, where it matters, a
+  right-knee note. Holds, carries and intervals have a timer that beeps (right side, then left).
+- **Weights** for dumbbell and cable movements carry over to the next time they come up.
+- **Knee check** after each session: if the knee was achy or sore, the plan says how to ease off.
+- **About the plan** covers what it trains, right-knee rules, fitting it around the W9–12 split and
+  tips (and videos) for the first day on the snow.
+
+It's kept apart from the W9–12 block. Its ticks, weights and knee checks are stored on the phone
+under their own key, so they don't appear in History, the backup file, the CSV export or the Google
+Sheet; **About the plan → Your plan data → Start the plan over** clears them.
+
+The plan is in `src/snowboard/plan.ts` (the trip date is `TRIP_DATE`), and the movements, videos and
+tips are in `src/snowboard/moves.ts`.
 
 ## Deployment
 

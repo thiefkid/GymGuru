@@ -248,8 +248,12 @@ export function guideFor(name: string): ExerciseGuide | undefined {
   return GUIDES[name];
 }
 
+export function youtubeQueryUrl(query: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+}
+
 export function youtubeSearchUrl(name: string): string {
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name.replace(' / ', ' or ')} exercise proper form`)}`;
+  return youtubeQueryUrl(`${name.replace(' / ', ' or ')} exercise proper form`);
 }
 
 export function youtubeWatchUrl(id: string): string {

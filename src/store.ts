@@ -13,7 +13,8 @@ import {
 } from './logic';
 import { SHEET_WEEKS, program, type DayId } from './program';
 
-export type Screen = 'today' | 'session' | 'summary' | 'history' | 'settings';
+/** 'snow' is the snowboard prep plan, which keeps its own state (see snowboard/store.ts). */
+export type Screen = 'today' | 'session' | 'summary' | 'history' | 'settings' | 'snow';
 
 export interface SyncState {
   /** Apps Script web app URL; empty when sync isn't set up. */
